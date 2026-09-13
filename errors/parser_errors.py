@@ -58,3 +58,19 @@ class MissingValueError(ParserError):
             f"Missing value for '{field}'",
             line,
         )
+        
+class InvalidZoneError(ParserError):
+    """Raised when the zone declaration is invalid."""
+
+    code = "INVALID_ZONE"
+
+    def __init__(self, message: str, line: int | None = None):
+        super().__init__(message, line)
+        
+class InvalidConnectionError(ParserError):
+    """Raised when the connection declaration is invalid."""
+
+    code = "INVALID_CONNECTION"
+
+    def __init__(self, message: str, line: int | None = None):
+        super().__init__(message, line)

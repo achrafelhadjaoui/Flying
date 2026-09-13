@@ -1,4 +1,5 @@
 import sys
+from controller import validate_data
 from parsing import Parser
 
 
@@ -14,10 +15,12 @@ def main() -> None:
     try:
         file = Parser()
         file.file_check(sys.argv[1])
-        file.clean_content()
         file.first_line_check()
+        file.zone_check()
+        validate_data(file.data)
+        #print(file.data["zones"][1])
     except Exception as e:
-        print(e)
+        print(str(e))
         exit(3)
     #print(file.content)
     
