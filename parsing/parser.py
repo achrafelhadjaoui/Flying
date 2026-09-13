@@ -165,7 +165,6 @@ class Parser():
     def zone_check(self) -> None:
         """a function that responsible for checking the zone of the file
         """
-        zone = ""
         self.data["zones"] = []
         
         for index, line in enumerate(self.content[self.file_index:], start=self.file_index+1):
@@ -179,7 +178,7 @@ class Parser():
                 self.zone_helper(line, index)
                 self.split_zone_line(line, index)
                 if line.startswith("end_hub"):
-                    self.file_index = index  # Update file_index to the line after the last zone
+                    self.file_index = index # Update file_index to the line after the last zone
                     break
             except InvalidFormatError as e:
                 raise e
@@ -187,6 +186,7 @@ class Parser():
     def connection_check(self) -> None:
         """a function that responsible for checking the connection of the file
         """
+        self.data["connections"] = []
         
         for index, line in enumerate(self.content[self.file_index:], start=self.file_index+1):
             if line.startswith("#"):
@@ -195,6 +195,33 @@ class Parser():
                 line = line.split("#", 1)[0].strip()
             if not line:
                 continue
+            if line.count(":") != 1:
+                raise InvalidFormatError("The line must contain exactly one ':'", index)
+            if len(line.strip().split()) > 3 or len(line.strip().split()) < 2:
+                raise InvalidFormatError("The line must contain exactly two or three items", index)
+            if line.split()[0].strip() != "connection:":
+                raise InvalidValueError("The line must start with 'connection'", index)
+            if len(line.split()) == 3:
+                if not line.split()[2].startswith("[") or not line.split()[2].endswith("]"):
+                    raise InvalidFormatError("The metadata must be enclosed in square brackets", index)
+                metadata = line.split()[2][1:-1]  # Remove the square brackets
+                if not metadata:
+                    raise InvalidValueError("The metadata cannot be empty", index)
+                if len(metadata.split()) != 1:
+                    raise InvalidFormatError("The metadata must contain exactly capacity", index)
+                if metadata.count("=") != 1:
+                    raise InvalidFormatError("The metadata must be in the format key=value", index)
+                if not metadata.split("=")[1].isdigit():
+                    raise InvalidValueError("The capacity must be an integer", index)
+                metadata_key, metadata_value = metadata.split("=")
+            connection_name = line.split(":", 1)[0].strip()
+            description = line.split()[1].strip()
+            self.data["connections"].append({
+                "line": index,
+                "connection_name": connection_name,
+                "description": description,
+                "metadata": {metadata_key: metadata_value}
+            })
             
             
             

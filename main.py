@@ -17,8 +17,10 @@ def main() -> None:
         file.file_check(sys.argv[1])
         file.first_line_check()
         file.zone_check()
+        file.connection_check()
         validate_data(file.data)
         #print(file.data["zones"][1])
+        print(file.data)
     except Exception as e:
         print(str(e))
         exit(3)
