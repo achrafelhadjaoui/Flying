@@ -214,12 +214,23 @@ class Parser():
                 if not metadata.split("=")[1].isdigit():
                     raise InvalidValueError("The capacity must be an integer", index)
                 metadata_key, metadata_value = metadata.split("=")
+            else:
+                metadata_key, metadata_value = "max_link_capacity", 1
             connection_name = line.split(":", 1)[0].strip()
             description = line.split()[1].strip()
+            if not description:
+                raise InvalidValueError("The description cannot be empty", index)
+            if description.count("-") != 1:
+                raise InvalidFormatError("The description must contain exactly two zones separated by a hyphen", index)
+            if not all(zone.strip() for zone in description.split("-")):
+                raise InvalidValueError("The zones in the description cannot be empty", index)
+            description = description.split("-")
+            
+            
             self.data["connections"].append({
                 "line": index,
                 "connection_name": connection_name,
-                "description": description,
+                "description": [description[0].strip(), description[1].strip()],
                 "metadata": {metadata_key: metadata_value}
             })
             

@@ -8,5 +8,5 @@ class ConnectionMetadata(BaseModel):
 
 class ConnectionValidator(BaseModel):
     connection_name: Literal["connection"]
-    description: str
+    description: list[str]
     metadata: ConnectionMetadata | None = None
