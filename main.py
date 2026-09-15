@@ -37,9 +37,26 @@ def main() -> None:
             zone_controller.connect_connection(file.data) 
             
         # finding the shortest path between the start and the end zone
-        short_path = ShortPath(file.data["zones"][0], file.data["zones"][-1], file.data["zones"])       
+        start_zone = None
+        end_zone = None
+        for zone in file.data["zones"]:
+            if zone["zone_name"] == "start_hub":
+                start_zone = zone
+            elif zone["zone_name"] == "end_hub":
+                end_zone = zone
+
+        if start_zone is None or end_zone is None:
+            raise ValueError("the map needs a start_hub and an end_hub")
+
+        short_path = ShortPath(start_zone, end_zone, file.data["zones"])
         short_path.find_shortest_path()
-        print(f"shortest path: {short_path.path}")
+
+        if not short_path.path:
+            print("no route found between the start and the end zone")
+        else:
+            route = " -> ".join(zone["name"] for zone in short_path.path)
+            print(f"shortest path: {route}")
+            print(f"cost: {short_path.total_cost} turns")
         
         
         #print(f"zones: {file.data['zones']}")
