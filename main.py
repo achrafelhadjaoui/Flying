@@ -1,8 +1,10 @@
 import sys
 from controller import validate_data
 from controller.logic_handling import ShortPath
+from controller.simulation import Simulation
 from parsing import Parser
 from controller import ZoneController
+from vue import SimulationView
 
 
 
@@ -53,10 +55,28 @@ def main() -> None:
 
         if not short_path.path:
             print("no route found between the start and the end zone")
-        else:
-            route = " -> ".join(zone["name"] for zone in short_path.path)
-            print(f"shortest path: {route}")
-            print(f"cost: {short_path.total_cost} turns")
+            return
+
+        route = " -> ".join(zone["name"] for zone in short_path.path)
+        print(f"shortest path: {route}")
+        print(f"cost: {short_path.total_cost} turns\n")
+
+        # flying the drones along that route and showing every turn
+        nb_drones = file.data["nb_drones"]
+        simulation = Simulation(
+            file.data["zones"],
+            [str(zone["name"]) for zone in short_path.path],
+            nb_drones,
+        )
+        view = SimulationView(file.data["zones"], nb_drones)
+
+        for moves, occupancy in simulation.run():
+            view.add_turn(moves, occupancy)
+
+        view.show()
+
+        if simulation.deadlock:
+            print("\nthe drones are stuck, no move is possible any more")
         
         
         #print(f"zones: {file.data['zones']}")
