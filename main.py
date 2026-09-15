@@ -1,5 +1,6 @@
 import sys
 from controller import validate_data
+from controller.logic_handling import ShortPath
 from parsing import Parser
 from controller import ZoneController
 
@@ -33,9 +34,15 @@ def main() -> None:
                 zone_data["metadata"].get("max_drones", 1),
                 zone_data["metadata"].get("zone", "normal")
             )
-            zone_controller.connect_connection(file.data)        
+            zone_controller.connect_connection(file.data) 
+            
+        # finding the shortest path between the start and the end zone
+        short_path = ShortPath(file.data["zones"][0], file.data["zones"][-1], file.data["zones"])       
+        short_path.find_shortest_path()
+        print(f"shortest path: {short_path.path}")
         
-        print(f"zones: {file.data['zones'][1]}")
+        
+        #print(f"zones: {file.data['zones']}")
         # creatiing instances from the zone_controller to connect the zones with the connections
         
         #print(file.data["zones"][1])
