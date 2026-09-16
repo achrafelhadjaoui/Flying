@@ -3,7 +3,8 @@ class FileError(Exception):
 
     code = "FILE_ERROR"
 
-    def __init__(self, message: str, file_path: str | None = None):
+    def __init__(self, message: str,
+                 file_path: str | None = None) -> None:
         self.message = message
         self.file_path = file_path
         super().__init__(message)
@@ -19,7 +20,7 @@ class FileNotFound(FileError):
 
     code = "FILE_NOT_FOUND"
 
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str) -> None:
         super().__init__("File was not found", file_path)
 
 
@@ -28,7 +29,7 @@ class FileNotReadable(FileError):
 
     code = "FILE_NOT_READABLE"
 
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str) -> None:
         super().__init__("File is not readable", file_path)
 
 
@@ -37,7 +38,7 @@ class EmptyFileError(FileError):
 
     code = "EMPTY_FILE"
 
-    def __init__(self, file_path: str | None = None):
+    def __init__(self, file_path: str | None = None) -> None:
         super().__init__("File is empty", file_path)
 
 
@@ -46,5 +47,6 @@ class OsFileError(FileError):
 
     code = "OS_FILE_ERROR"
 
-    def __init__(self, file_path: str, message: str = "OS error while accessing file"):
+    def __init__(self, file_path: str,
+                 message: str = "OS error while accessing file") -> None:
         super().__init__(message, file_path)

@@ -1,7 +1,7 @@
 [project]
 name = "flying"
 version = "0.1.0"
-description = "Add your description here"
+description = "Drone routing simulation across a network of zones"
 readme = "README.md"
 authors = [
     { name = "achrafelhadjaoui", email = "aelhadjaoui23@gmail.com" }
@@ -11,9 +11,15 @@ dependencies = [
     "pydantic>=2.13.5",
 ]
 
-[project.scripts]
-flying = "flying:main"
+[dependency-groups]
+dev = [
+    "flake8>=7.0.0",
+    "mypy>=1.10.0",
+]
 
-[build-system]
-requires = ["uv_build>=0.12.13,<0.13.0"]
-build-backend = "uv_build"
+[tool.uv]
+package = false
+
+[tool.mypy]
+python_version = "3.11"
+exclude = ['^\.venv/']

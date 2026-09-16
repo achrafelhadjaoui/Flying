@@ -174,12 +174,18 @@ class Simulation:
 
         return moves
 
-    def advance(self) -> list[Move]:
+    def advance(self, landed: set[str]) -> list[Move]:
         """Try to move every drone one step further.
 
         Drones are handled from the one closest to the goal, so a drone
         that leaves a zone frees the place for the one behind it during
         the very same turn.
+
+        Args:
+            landed (set[str]): the drones that just came down from a
+                connection this very turn. Reaching a restricted zone
+                costs two turns, so their move is already done and
+                they must not fly again before the next turn.
 
         Returns:
             list[Move]: the moves and the waits of this turn.
@@ -189,6 +195,9 @@ class Simulation:
         order = sorted(self.position, key=lambda one: -self.position[one])
 
         for drone in order:
+            if drone in landed:
+                continue
+
             index = self.position[drone]
             step = index + 1
             here = str(self.path[index]["name"])
@@ -254,7 +263,8 @@ class Simulation:
             list[Move]: everything that happened during the turn.
         """
         moves = self.land_flying()
-        moves.extend(self.advance())
+        landed = {move.drone for move in moves}
+        moves.extend(self.advance(landed))
 
         return moves
 

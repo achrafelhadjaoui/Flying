@@ -1,16 +1,35 @@
-class Zone():
-    """a class represent zone model
-    """
-    # class index for tracking the cuurrent zone in the data
+"""Concrete zone built from the data read in a map file."""
+
+from .abstract_classes import AbstractZone
+
+
+class Zone(AbstractZone):
+    """A class that represents a zone model."""
+
+    # class index for tracking the current zone in the data
     index: int = 0
-    
-    def __init__(self, zone_name:str, name:str, x_coordinate:int, y_coordinate:int, color:str = "", max_drones:int = 1, zone:str = "normal"):
-        """init function to initilise given needed data
+
+    def __init__(self, zone_name: str, name: str, x_coordinate: int,
+                 y_coordinate: int, color: str = "", max_drones: int = 1,
+                 zone: str = "normal") -> None:
+        """Init function to initialise the given needed data.
+
+        Args:
+            zone_name (str): the prefix of the line, for instance
+                'hub' or 'start_hub'.
+            name (str): the name of the zone.
+            x_coordinate (int): the x coordinate of the zone.
+            y_coordinate (int): the y coordinate of the zone.
+            color (str): the colour asked in the map file.
+            max_drones (int): how many drones the zone may hold.
+            zone (str): normal, blocked, restricted or priority.
         """
-        self.zone_name = zone_name
-        self.name = name
-        self.x_coordinate = x_coordinate
-        self.y_coordinate = y_coordinate
-        self.color = color
-        self.capacity = max_drones
-        self.zone_type = zone
+        super().__init__(
+            zone_name,
+            name,
+            x_coordinate,
+            y_coordinate,
+            color,
+            max_drones,
+            zone,
+        )

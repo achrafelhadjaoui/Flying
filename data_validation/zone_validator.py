@@ -1,34 +1,42 @@
+"""Schema of one zone declaration."""
+
 from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, PositiveInt
 
 
 class ZoneNames(str, Enum):
+    """The three prefixes a zone line may start with."""
+
     start_hub = "start_hub"
     hub = "hub"
     end_hub = "end_hub"
 
 
 class ZoneType(str, Enum):
-    priority = "priority"
+    """The four zone types the subject allows."""
+
+    normal = "normal"
+    blocked = "blocked"
     restricted = "restricted"
-    
-class Color(str, Enum):
-    red = "red"
-    blue = "blue"
-    green = "green"
-    yellow = "yellow"
-    orange = "orange"
-    cyan = "cyan"
+    priority = "priority"
 
 
 class Metadata(BaseModel):
-    color: Color | None = None
-    max_drones: int | None = None
-    zone_type: ZoneType | None = None
+    """The optional tags written between the square brackets.
+
+    The subject sets no list of allowed colours, any single word is
+    accepted, so the colour is kept as a plain string.
+    """
+
+    color: str | None = None
+    max_drones: PositiveInt | None = None
+    zone: ZoneType | None = None
 
 
 class ZoneValidator(BaseModel):
+    """One zone, as the parser stored it."""
+
     zone_name: ZoneNames
     name: str
     x_coordinate: int

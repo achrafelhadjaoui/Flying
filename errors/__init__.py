@@ -12,4 +12,21 @@ from .parser_errors import (
     InvalidFormatError,
     InvalidValueError,
     MissingValueError,
+    InvalidZoneError,
+    InvalidConnectionError,
 )
+
+__all__ = [
+    "EmptyFileError",
+    "FileError",
+    "FileNotFound",
+    "FileNotReadable",
+    "InvalidConnectionError",
+    "InvalidFirstLineError",
+    "InvalidFormatError",
+    "InvalidValueError",
+    "InvalidZoneError",
+    "MissingValueError",
+    "OsFileError",
+    "ParserError",
+]

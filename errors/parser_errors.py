@@ -7,7 +7,7 @@ class ParserError(Exception):
         self,
         message: str,
         line: int | None = None,
-    ):
+    ) -> None:
         self.message = message
         self.line = line
         super().__init__(message)
@@ -23,7 +23,7 @@ class InvalidFirstLineError(ParserError):
 
     code = "INVALID_FIRST_LINE"
 
-    def __init__(self, line: int = 1):
+    def __init__(self, line: int = 1) -> None:
         super().__init__(
             "The first line must contain 'nb_drones'",
             line,
@@ -35,7 +35,7 @@ class InvalidFormatError(ParserError):
 
     code = "INVALID_FORMAT"
 
-    def __init__(self, message: str, line: int | None = None):
+    def __init__(self, message: str, line: int | None = None) -> None:
         super().__init__(message, line)
 
 
@@ -44,7 +44,7 @@ class InvalidValueError(ParserError):
 
     code = "INVALID_VALUE"
 
-    def __init__(self, message: str, line: int | None = None):
+    def __init__(self, message: str, line: int | None = None) -> None:
         super().__init__(message, line)
 
 
@@ -53,24 +53,26 @@ class MissingValueError(ParserError):
 
     code = "MISSING_VALUE"
 
-    def __init__(self, field: str, line: int | None = None):
+    def __init__(self, field: str, line: int | None = None) -> None:
         super().__init__(
             f"Missing value for '{field}'",
             line,
         )
-        
+
+
 class InvalidZoneError(ParserError):
     """Raised when the zone declaration is invalid."""
 
     code = "INVALID_ZONE"
 
-    def __init__(self, message: str, line: int | None = None):
+    def __init__(self, message: str, line: int | None = None) -> None:
         super().__init__(message, line)
-        
+
+
 class InvalidConnectionError(ParserError):
     """Raised when the connection declaration is invalid."""
 
     code = "INVALID_CONNECTION"
 
-    def __init__(self, message: str, line: int | None = None):
+    def __init__(self, message: str, line: int | None = None) -> None:
         super().__init__(message, line)
