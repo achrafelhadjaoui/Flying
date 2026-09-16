@@ -12,18 +12,29 @@ class ShortPath:
     """
 
     def __init__(self, start: ZoneData, end: ZoneData,
-                 data: list[ZoneData]) -> None:
+                 data: list[ZoneData],
+                 banned: set[str] | None = None,
+                 banned_links: set[tuple[str, str]] | None = None) -> None:
         """Initialize the start and end zones.
 
         Args:
             start (ZoneData): start zone node.
             end (ZoneData): goal zone node.
             data (list[ZoneData]): list of all zone nodes.
+            banned (set[str] | None): zones the route may not cross,
+                used to look for a second route once the zones of the
+                first one are full.
+            banned_links (set[tuple[str, str]] | None): connections the
+                route may not use, for the very same reason.
         """
 
         self.start = start
         self.end = end
         self.data = data
+        self.banned = banned if banned is not None else set()
+        self.banned_links = (
+            banned_links if banned_links is not None else set()
+        )
         self.min_heap: list[tuple[int, ZoneData, int]] = []
         self.is_found: set[str] = set()
         self.path: list[ZoneData] = []
@@ -66,6 +77,26 @@ class ShortPath:
                     break
 
         return span
+
+    @staticmethod
+    def link_key(first: str, second: str) -> tuple[str, str]:
+        """Return the key naming one connection.
+
+        A connection is bidirectional, so the two zones are sorted to
+        give 'a-b' and 'b-a' the very same key.
+
+        Args:
+            first (str): one end of the connection.
+            second (str): the other end.
+
+        Returns:
+            tuple[str, str]: the key of that connection.
+        """
+
+        if first <= second:
+            return (first, second)
+
+        return (second, first)
 
     def count_estimated_number(self, prev_cost: int,
                                node: ZoneData) -> tuple[int, int, str]:
@@ -163,6 +194,12 @@ class ShortPath:
             prev_cost (int): real cost g(n) of the previous node.
             prev_name (str): name of the previous zone.
         """
+        if neighbor_name in self.banned:
+            return
+
+        if self.link_key(prev_name, neighbor_name) in self.banned_links:
+            return
+
         for item in self.data:
             if item["name"] != neighbor_name:
                 continue

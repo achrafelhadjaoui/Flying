@@ -11,6 +11,11 @@ TurnRecord = tuple[list[Move], dict[str, list[str]]]
 class Simulation:
     """Play the flight turn after turn.
 
+    Every drone carries its own route, so the fleet may be spread over
+    as many paths as the map allows. The zones and the connections are
+    therefore counted by name and not by step, since two routes often
+    share a piece of the network.
+
     The rules enforced here are the ones of VII.2 and VII.3:
 
     * a zone holds at most max_drones drones, the start and the end
@@ -24,36 +29,42 @@ class Simulation:
 
     RESTRICTED: str = "restricted"
 
-    def __init__(self, zones: list[ZoneData], path: list[str],
-                 nb_drones: int) -> None:
+    HUBS: tuple[str, ...] = ("start_hub", "end_hub")
+
+    def __init__(self, zones: list[ZoneData],
+                 routes: dict[str, list[str]], nb_drones: int) -> None:
         """Prepare the fleet on the start zone.
 
         Args:
             zones (list[ZoneData]): every zone of the network.
-            path (list[str]): the route, from the start to the end.
+            routes (dict[str, list[str]]): drone -> the zone names of
+                the route it was given, from the start to the end.
             nb_drones (int): how many drones have to be delivered.
         """
-        by_name = {str(zone["name"]): zone for zone in zones}
-
         self.zones = zones
-        self.path: list[ZoneData] = [by_name[name] for name in path]
+        self.by_name: dict[str, ZoneData] = {
+            str(zone["name"]): zone for zone in zones
+        }
+        self.routes = routes
         self.nb_drones = nb_drones
-        self.last: int = len(self.path) - 1
 
-        # drone -> index on the route
-        self.position: dict[str, int] = {}
-        # drone -> (index left behind, index it must land on)
-        self.flying: dict[str, tuple[int, int]] = {}
+        # drone -> how far it went on its own route, a drone in the
+        # air already counting on the step it will land on
+        self.step: dict[str, int] = {}
+        # drone -> (zone left behind, connection it flies over)
+        self.flying: dict[str, tuple[str, str]] = {}
         self.delivered: set[str] = set()
         self.deadlock: bool = False
 
-        # how many drones stand on each step of the route, a drone in
-        # the air already counting on the step it will land on
-        self.occupied: list[int] = [0] * len(self.path)
-        self.occupied[0] = nb_drones
+        # zone name -> how many drones stand there or booked a place
+        self.occupied: dict[str, int] = {}
 
-        for number in range(1, nb_drones + 1):
-            self.position[f"D{number}"] = 0
+        for drone, route in routes.items():
+            if len(route) < 2:
+                continue
+
+            self.step[drone] = 0
+            self.occupied[route[0]] = self.occupied.get(route[0], 0) + 1
 
     def read_number(self, value: Any, fallback: int = 1) -> int:
         """Read a capacity written either as a text or as a number.
@@ -73,35 +84,41 @@ class Simulation:
         except (TypeError, ValueError):
             return fallback
 
-    def zone_capacity(self, index: int) -> int:
-        """Return how many drones a step of the route can hold.
+    def zone_capacity(self, name: str) -> int:
+        """Return how many drones a zone can hold.
 
         Args:
-            index (int): the position on the route.
+            name (str): the zone name.
 
         Returns:
             int: the capacity, the whole fleet for the two hubs.
         """
-        zone = self.path[index]
+        zone = self.by_name.get(name)
 
-        if str(zone["zone_name"]) in ("start_hub", "end_hub"):
+        if zone is None:
+            return 1
+
+        if str(zone["zone_name"]) in self.HUBS:
             return self.nb_drones
 
         metadata = zone.get("metadata", {})
 
         return self.read_number(metadata.get("max_drones", 1))
 
-    def link_capacity(self, index: int) -> int:
+    def link_capacity(self, origin: str, target: str) -> int:
         """Return how many drones may fly one connection at once.
 
         Args:
-            index (int): the step the connection starts from.
+            origin (str): the zone the connection leaves from.
+            target (str): the zone it leads to.
 
         Returns:
             int: the capacity of the connection.
         """
-        zone = self.path[index]
-        target = str(self.path[index + 1]["name"])
+        zone = self.by_name.get(origin)
+
+        if zone is None:
+            return 1
 
         for neighbor in zone.get("neighbors", []):
             if len(neighbor) < 2 or str(neighbor[0]) != target:
@@ -111,31 +128,84 @@ class Simulation:
 
         return 1
 
-    def is_restricted(self, index: int) -> bool:
-        """Tell whether reaching a step costs two turns.
+    def link_key(self, origin: str, target: str) -> tuple[str, str]:
+        """Return the key counting the use of one connection.
+
+        A connection is bidirectional, so two drones crossing it in
+        opposite directions share the same capacity.
 
         Args:
-            index (int): the position on the route.
+            origin (str): one end of the connection.
+            target (str): the other end.
+
+        Returns:
+            tuple[str, str]: the key of that connection.
+        """
+        if origin <= target:
+            return (origin, target)
+
+        return (target, origin)
+
+    def is_restricted(self, name: str) -> bool:
+        """Tell whether reaching a zone costs two turns.
+
+        Args:
+            name (str): the zone name.
 
         Returns:
             bool: True when the zone is restricted.
         """
-        metadata = self.path[index].get("metadata", {})
+        zone = self.by_name.get(name)
+
+        if zone is None:
+            return False
+
+        metadata = zone.get("metadata", {})
 
         return str(metadata.get("zone", "normal")) == self.RESTRICTED
 
-    def connection_name(self, index: int) -> str:
-        """Return the name of the connection leaving a step.
+    def connection_name(self, origin: str, target: str) -> str:
+        """Return the name of the connection between two zones.
 
         Args:
-            index (int): the step the connection starts from.
+            origin (str): the zone the drone leaves.
+            target (str): the zone it heads to.
 
         Returns:
             str: the connection written as "zone1-zone2".
         """
-        return (
-            f"{self.path[index]['name']}-{self.path[index + 1]['name']}"
-        )
+        return f"{origin}-{target}"
+
+    def remaining(self, drone: str) -> int:
+        """Return how many steps a drone still has to fly.
+
+        Args:
+            drone (str): the drone identifier.
+
+        Returns:
+            int: the number of steps left on its route.
+        """
+        return len(self.routes[drone]) - 1 - self.step[drone]
+
+    def arrived(self, drone: str) -> bool:
+        """Tell whether a drone stands on the last step of its route.
+
+        Args:
+            drone (str): the drone identifier.
+
+        Returns:
+            bool: True when the drone reached the end zone.
+        """
+        return self.remaining(drone) == 0
+
+    def deliver(self, drone: str) -> None:
+        """Take a delivered drone out of the flight.
+
+        Args:
+            drone (str): the drone identifier.
+        """
+        del self.step[drone]
+        self.delivered.add(drone)
 
     def land_flying(self) -> list[Move]:
         """Land every drone that spent the previous turn in the air.
@@ -148,31 +218,28 @@ class Simulation:
             list[Move]: the landings of this turn.
         """
         moves: list[Move] = []
-        flights = sorted(self.flying.items(), key=lambda pair: -pair[1][1])
+        flights = sorted(self.flying, key=self.remaining)
 
-        for drone, (origin, target) in flights:
+        for drone in flights:
+            origin = self.flying[drone][0]
             del self.flying[drone]
 
-            name = str(self.path[target]["name"])
-            arrived = target == self.last
+            name = self.routes[drone][self.step[drone]]
+            arrived = self.arrived(drone)
 
-            moves.append(Move.arrival(
-                drone, str(self.path[origin]["name"]), name, arrived
-            ))
+            moves.append(Move.arrival(drone, origin, name, arrived))
 
             if arrived:
-                self.delivered.add(drone)
-            else:
-                self.position[drone] = target
+                self.deliver(drone)
 
         return moves
 
     def advance(self, landed: set[str]) -> list[Move]:
         """Try to move every drone one step further.
 
-        Drones are handled from the one closest to the goal, so a drone
-        that leaves a zone frees the place for the one behind it during
-        the very same turn.
+        Drones are handled from the one closest to the goal, so a
+        drone that leaves a zone frees the place for the one behind it
+        during the very same turn.
 
         Args:
             landed (set[str]): the drones that just came down from a
@@ -184,68 +251,69 @@ class Simulation:
             list[Move]: the moves and the waits of this turn.
         """
         moves: list[Move] = []
-        used: dict[int, int] = {}
-        order = sorted(self.position, key=lambda one: -self.position[one])
+        used: dict[tuple[str, str], int] = {}
+        order = sorted(self.step, key=self.remaining)
 
         for drone in order:
-            if drone in landed:
+            if drone in landed or drone in self.flying:
                 continue
 
-            index = self.position[drone]
-            step = index + 1
-            here = str(self.path[index]["name"])
+            route = self.routes[drone]
+            index = self.step[drone]
+            here = route[index]
+            target = route[index + 1]
+            key = self.link_key(here, target)
 
-            room = self.occupied[step] < self.zone_capacity(step)
-            free = used.get(index, 0) < self.link_capacity(index)
+            room = self.occupied.get(target, 0) < self.zone_capacity(target)
+            free = used.get(key, 0) < self.link_capacity(here, target)
 
             if not room or not free:
                 moves.append(Move.wait(drone, here))
                 continue
 
-            used[index] = used.get(index, 0) + 1
-            self.occupied[index] -= 1
-            self.occupied[step] += 1
+            used[key] = used.get(key, 0) + 1
+            self.occupied[here] = self.occupied.get(here, 0) - 1
+            self.occupied[target] = self.occupied.get(target, 0) + 1
+            self.step[drone] = index + 1
 
-            if self.is_restricted(step):
+            if self.is_restricted(target):
                 # the place on the restricted zone is booked now, so
                 # the drone is sure to land on the next turn
-                del self.position[drone]
-                self.flying[drone] = (index, step)
+                self.flying[drone] = (
+                    here,
+                    self.connection_name(here, target),
+                )
                 moves.append(Move.flight(
-                    drone, here, self.connection_name(index)
+                    drone, here, self.connection_name(here, target)
                 ))
                 continue
 
-            name = str(self.path[step]["name"])
-            arrived = step == self.last
+            arrived = self.arrived(drone)
 
-            moves.append(Move.arrival(drone, here, name, arrived))
+            moves.append(Move.arrival(drone, here, target, arrived))
 
             if arrived:
-                del self.position[drone]
-                self.delivered.add(drone)
-            else:
-                self.position[drone] = step
+                self.deliver(drone)
 
         return moves
 
     def occupancy(self) -> dict[str, list[str]]:
         """Return which drones stand on which zone.
 
+        A drone in the air is counted on the zone it booked, which is
+        the zone it is bound to land on during the next turn.
+
         Returns:
             dict[str, list[str]]: zone name -> drone identifiers.
         """
         standing: dict[str, list[str]] = {}
 
-        for drone, index in self.position.items():
-            standing.setdefault(
-                str(self.path[index]["name"]), []
-            ).append(drone)
+        for drone, index in self.step.items():
+            standing.setdefault(self.routes[drone][index], []).append(drone)
 
         for drone in self.delivered:
-            standing.setdefault(
-                str(self.path[self.last]["name"]), []
-            ).append(drone)
+            end = self.routes[drone][-1]
+            standing.setdefault(end, []).append(drone)
 
         return standing
 
@@ -267,24 +335,40 @@ class Simulation:
         Returns:
             bool: True when the simulation is over.
         """
-        return len(self.delivered) >= self.nb_drones
+        return len(self.delivered) >= len(self.routes)
+
+    def longest_route(self) -> int:
+        """Return the number of steps of the longest route.
+
+        Returns:
+            int: the length of the longest route, zero when the fleet
+            has nowhere to go.
+        """
+        lengths = [len(route) - 1 for route in self.routes.values()]
+
+        if not lengths:
+            return 0
+
+        return max(lengths)
 
     def run(self, max_turns: int = 0) -> list[TurnRecord]:
         """Play the whole flight.
 
         Args:
             max_turns (int): safety limit, computed from the fleet and
-                the route when it is left to zero.
+                the routes when it is left to zero.
 
         Returns:
             list[TurnRecord]: one (moves, occupancy) pair
             per turn.
         """
-        if self.last < 1 or self.nb_drones < 1:
+        longest = self.longest_route()
+
+        if longest < 1 or not self.step:
             return []
 
         if max_turns <= 0:
-            max_turns = (self.nb_drones + 2) * (self.last + 2)
+            max_turns = (self.nb_drones + 2) * (longest + 2)
 
         turns: list[TurnRecord] = []
 

@@ -17,6 +17,12 @@ class Parser:
     # the three prefixes that open a zone declaration
     ZONE_KEYS: tuple[str, ...] = ("start_hub", "end_hub", "hub")
 
+    # the tags a zone line may carry between its brackets
+    ZONE_METADATA_KEYS: tuple[str, ...] = ("color", "max_drones", "zone")
+
+    # the only tag a connection line may carry
+    LINK_METADATA_KEYS: tuple[str, ...] = ("max_link_capacity",)
+
     def __init__(self) -> None:
         """Initialisation of the parser."""
         self.content: list[str] = []
@@ -145,6 +151,54 @@ class Parser:
                     index,
                 )
 
+    def check_coordinates(self, x: int, y: int, index: int) -> None:
+        """Check that no zone sits on those coordinates already.
+
+        Args:
+            x (int): the x coordinate read on the zone line.
+            y (int): the y coordinate read on the zone line.
+            index (int): number of that line within the file.
+        """
+        for zone in self.data["zones"]:
+            if (zone["x_coordinate"], zone["y_coordinate"]) == (x, y):
+                raise InvalidValueError(
+                    f"The coordinates ({x}, {y}) are already used by the "
+                    f"zone '{zone['name']}' on line {zone['line']}",
+                    index,
+                )
+
+    def check_metadata_keys(
+        self,
+        keys: list[str],
+        allowed: tuple[str, ...],
+        index: int,
+    ) -> None:
+        """Check the tags of one metadata block, twice is never allowed.
+
+        Args:
+            keys (list[str]): the keys read inside the brackets.
+            allowed (tuple[str, ...]): the keys that block accepts.
+            index (int): number of that line within the file.
+        """
+        seen: set[str] = set()
+
+        for key in keys:
+            if key not in allowed:
+                raise InvalidValueError(
+                    f"'{key}' is not a known metadata key, expected one "
+                    f"of {', '.join(allowed)}",
+                    index,
+                )
+
+            if key in seen:
+                raise InvalidValueError(
+                    f"The metadata key '{key}' is written twice on the "
+                    f"same line, only one value is allowed",
+                    index,
+                )
+
+            seen.add(key)
+
     def read_metadata(self, metadata: str, index: int) -> dict[str, str]:
         """Read the optional metadata block of a zone line.
 
@@ -170,26 +224,33 @@ class Parser:
 
         items = metadata.split()
 
-        if len(items) > 3:
-            raise InvalidFormatError(
-                "Metadata must contain between 1 and 3 items",
-                index,
-            )
-        elif not all("=" in item for item in items):
+        if not all("=" in item for item in items):
             raise InvalidFormatError(
                 "Metadata items must be in the format key=value",
                 index,
             )
 
-        for item in items:
-            key, value = item.split("=", 1)
+        pairs = [item.split("=", 1) for item in items]
 
-            if not key or not value:
-                raise InvalidValueError(
-                    "Metadata keys and values cannot be empty",
-                    index,
-                )
+        if not all(key and value for key, value in pairs):
+            raise InvalidValueError(
+                "Metadata keys and values cannot be empty",
+                index,
+            )
 
+        self.check_metadata_keys(
+            [key for key, _ in pairs],
+            self.ZONE_METADATA_KEYS,
+            index,
+        )
+
+        if len(items) > 3:
+            raise InvalidFormatError(
+                "Metadata must contain between 1 and 3 items",
+                index,
+            )
+
+        for key, value in pairs:
             data_attributes[key] = value
 
         return data_attributes
@@ -229,6 +290,8 @@ class Parser:
                 "Coordinates must be integers",
                 index,
             ) from e
+
+        self.check_coordinates(x_coordinate, y_coordinate, index)
 
         # the metadata block is optional, every tag then keeps its
         # default value
@@ -322,12 +385,20 @@ class Parser:
     def check_duplicate(self, zones: list[str], index: int) -> None:
         """Check that a connection is not declared twice.
 
-        'a-b' and 'b-a' describe the same connection.
+        'a-b' and 'b-a' describe the same connection, and a zone is
+        never linked to itself.
 
         Args:
             zones (list[str]): the two zones of the connection.
             index (int): number of that line within the file.
         """
+        if zones[0] == zones[1]:
+            raise InvalidValueError(
+                f"The connection cannot link the zone '{zones[0]}' "
+                f"to itself",
+                index,
+            )
+
         for connection in self.data["connections"]:
             if sorted(connection["description"]) == sorted(zones):
                 raise InvalidValueError(
@@ -356,9 +427,24 @@ class Parser:
 
         if not metadata.strip():
             raise InvalidValueError("The metadata cannot be empty", index)
-        if len(metadata.split()) != 1:
+
+        items = metadata.split()
+
+        if not all("=" in item for item in items):
             raise InvalidFormatError(
-                "The metadata must contain exactly capacity",
+                "The metadata must be in the format key=value",
+                index,
+            )
+
+        self.check_metadata_keys(
+            [item.split("=", 1)[0] for item in items],
+            self.LINK_METADATA_KEYS,
+            index,
+        )
+
+        if len(items) != 1:
+            raise InvalidFormatError(
+                "The metadata must contain exactly one capacity",
                 index,
             )
         if metadata.count("=") != 1:
@@ -391,7 +477,8 @@ class Parser:
                     index,
                 )
 
-            parts = line.split()
+            # the two zones and the optional metadata block
+            parts = line.split(None, 2)
 
             if len(parts) > 3 or len(parts) < 2:
                 raise InvalidFormatError(

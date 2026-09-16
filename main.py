@@ -1,9 +1,9 @@
 import sys
 from typing import Any
 
-from controller import validate_data
+from controller import DataValidator
 from controller import ZoneController
-from controller.logic_handling import ShortPath
+from controller.flight_plan import FlightPlan
 from controller.simulation import Simulation
 from parsing import Parser
 from vue import SimulationView
@@ -35,7 +35,7 @@ class FlyIn:
         file.first_line_check()
         file.zone_check()
         file.connection_check()
-        validate_data(file.data)
+        DataValidator(file.data).validate()
 
         self.file = file
         return file
@@ -88,52 +88,77 @@ class FlyIn:
 
         return start_zone, end_zone
 
-    def find_route(
+    def plan_flight(
         self,
+        data: dict[str, Any],
         start_zone: ZoneData,
         end_zone: ZoneData,
-        zones: list[ZoneData],
-    ) -> list[ZoneData]:
-        """Find the shortest route between the two hubs.
+    ) -> FlightPlan:
+        """Share the fleet between every usable route.
 
         Args:
+            data (dict[str, Any]): parsed map data.
             start_zone (ZoneData): starting zone.
             end_zone (ZoneData): destination zone.
-            zones (list[ZoneData]): all zones in the map.
 
         Returns:
-            list[ZoneData]: zones forming the shortest route.
+            FlightPlan: the routes and the drones flying over them.
         """
-        short_path = ShortPath(start_zone, end_zone, zones)
-        short_path.find_shortest_path()
+        plan = FlightPlan(
+            start_zone,
+            end_zone,
+            data["zones"],
+            data["nb_drones"],
+        )
+        plan.build()
 
-        if not short_path.path:
+        if not plan.paths:
             print(
                 "no route found between the start and the end zone"
             )
-            return []
+            return plan
 
-        route = " -> ".join(
-            str(zone["name"]) for zone in short_path.path
-        )
-        print(f"shortest path: {route}")
-        print(f"cost: {short_path.total_cost} turns\n")
+        self.show_plan(plan)
 
-        return short_path.path
+        return plan
+
+    def show_plan(self, plan: FlightPlan) -> None:
+        """Tell which route each part of the fleet was given.
+
+        Args:
+            plan (FlightPlan): the plan of the flight.
+        """
+        used = plan.used_paths()
+
+        print(f"{len(used)} path(s) used out of {len(plan.paths)} found")
+
+        for number, index in enumerate(used, start=1):
+            route = " -> ".join(plan.paths[index])
+
+            cost = plan.path_cost(plan.paths[index])
+
+            print(
+                f"  path {number}: {route}\n"
+                f"           {cost} turns, "
+                f"{plan.loads[index]} drone(s)"
+            )
+
+        print()
 
     def fly(
         self,
         data: dict[str, Any],
-        route: list[str],
+        routes: dict[str, list[str]],
     ) -> None:
         """Run the drone simulation and display every turn.
 
         Args:
             data (dict[str, Any]): parsed map data.
-            route (list[str]): zone names forming the route.
+            routes (dict[str, list[str]]): drone -> the zone names of
+                the route it was given.
         """
         nb_drones = data["nb_drones"]
-        simulation = Simulation(data["zones"], route, nb_drones)
+        simulation = Simulation(data["zones"], routes, nb_drones)
         view = SimulationView(data["zones"], nb_drones)
 
         for moves, occupancy in simulation.run():
@@ -154,17 +179,12 @@ class FlyIn:
 
         start_zone, end_zone = self.find_hubs(file.data)
 
-        path = self.find_route(
-            start_zone,
-            end_zone,
-            file.data["zones"],
-        )
+        plan = self.plan_flight(file.data, start_zone, end_zone)
 
-        if not path:
+        if not plan.routes:
             return
 
-        route = [str(zone["name"]) for zone in path]
-        self.fly(file.data, route)
+        self.fly(file.data, plan.routes)
 
 
 def main() -> None:
