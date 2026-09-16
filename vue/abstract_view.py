@@ -1,5 +1,3 @@
-"""Base class shared by every terminal view of the project."""
-
 from abc import ABC, abstractmethod
 
 

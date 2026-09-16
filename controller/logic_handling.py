@@ -1,10 +1,3 @@
-"""A* search of the cheapest route between the two hubs.
-
-The cost of a move is the one of the zone it lands on: one turn for a
-normal or a priority zone, two turns for a restricted one, and a
-blocked zone is never entered.
-"""
-
 from typing import Any
 
 ZoneData = dict[str, Any]

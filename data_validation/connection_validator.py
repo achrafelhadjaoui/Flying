@@ -1,5 +1,3 @@
-"""Schema of one connection declaration."""
-
 from typing import Literal
 
 from pydantic import BaseModel, PositiveInt

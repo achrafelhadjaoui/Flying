@@ -1,5 +1,3 @@
-"""Whole simulation report: every turn, then the final figures."""
-
 from typing import Any
 
 from .abstract_view import BaseView

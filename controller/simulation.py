@@ -1,10 +1,3 @@
-"""Turn by turn scheduling of the drones along a route.
-
-This first version sends the whole fleet down the single route found
-by the A* search. It already respects every rule of the subject, but
-it does not spread the drones over several routes yet.
-"""
-
 from typing import Any
 
 from vue import Move

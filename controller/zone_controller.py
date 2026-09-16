@@ -1,5 +1,3 @@
-"""Creation of a zone and of the links it takes part in."""
-
 from typing import Any
 
 from model import Zone

@@ -1,5 +1,3 @@
-"""Abstract description of a zone of the network."""
-
 from abc import ABC, abstractmethod
 from typing import Any
 

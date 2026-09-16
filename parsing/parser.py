@@ -1,5 +1,3 @@
-"""Reading and syntax checking of a map file."""
-
 from typing import Any
 
 from errors import (

@@ -1,9 +1,3 @@
-"""Colour handling for the terminal views.
-
-Everything here relies on plain ANSI escape sequences, so the project
-keeps working without any external colour library.
-"""
-
 import os
 import shutil
 import sys

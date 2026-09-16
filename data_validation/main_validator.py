@@ -1,5 +1,3 @@
-"""Schema of a whole map file."""
-
 from pydantic import BaseModel, PositiveInt
 
 from .zone_validator import ZoneValidator

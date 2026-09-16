@@ -1,5 +1,3 @@
-"""Schema of the first line of a map file."""
-
 from typing import Literal
 
 from pydantic import BaseModel, PositiveInt

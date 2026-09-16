@@ -1,5 +1,3 @@
-"""Concrete zone built from the data read in a map file."""
-
 from .abstract_classes import AbstractZone
 
 

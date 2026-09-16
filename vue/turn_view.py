@@ -1,5 +1,3 @@
-"""Description of what happens during one simulation turn."""
-
 from typing import Any
 
 from .abstract_view import BaseView

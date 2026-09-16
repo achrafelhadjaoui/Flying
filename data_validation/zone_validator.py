@@ -1,5 +1,3 @@
-"""Schema of one zone declaration."""
-
 from enum import Enum
 
 from pydantic import BaseModel, PositiveInt
