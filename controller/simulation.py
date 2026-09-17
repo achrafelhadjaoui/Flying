@@ -167,13 +167,27 @@ class Simulation:
     def connection_name(self, origin: str, target: str) -> str:
         """Return the name of the connection between two zones.
 
+        A connection is declared once in the map file, so it keeps the
+        name written there whichever way the drone flies over it. The
+        subject (VII.5) asks for that very name on the turn line of a
+        drone still heading towards a restricted zone.
+
         Args:
             origin (str): the zone the drone leaves.
             target (str): the zone it heads to.
 
         Returns:
-            str: the connection written as "zone1-zone2".
+            str: the connection as the map file names it.
         """
+        zone = self.by_name.get(origin)
+
+        if zone is not None:
+            for neighbor in zone.get("neighbors", []):
+                if len(neighbor) < 3 or str(neighbor[0]) != target:
+                    continue
+
+                return str(neighbor[2])
+
         return f"{origin}-{target}"
 
     def remaining(self, drone: str) -> int:

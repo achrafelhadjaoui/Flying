@@ -63,10 +63,15 @@ class SimulationView(BaseView):
     def official_output(self) -> str:
         """Build only the lines required by the subject.
 
+        A turn on which nobody could move produces nothing at all, so
+        it leaves no empty line behind.
+
         Returns:
             str: one line per turn, in the expected format.
         """
-        return "\n".join(turn.official_line() for turn in self.turns)
+        lines = [turn.official_line() for turn in self.turns]
+
+        return "\n".join(line for line in lines if line)
 
     def delivery_turns(self) -> dict[str, int]:
         """Find the turn on which each drone was delivered.
@@ -145,6 +150,21 @@ class SimulationView(BaseView):
 
         return f"{title}   {detail}\n"
 
+    def render_official(self) -> str:
+        """Build the block holding the lines required by the subject.
+
+        The lines are printed raw, without any colour, any indentation
+        and any decoration, so the block is exactly the output asked
+        for in VII.5.
+
+        Returns:
+            str: the title of the block and the turn lines.
+        """
+        title = self.terminal.paint("  Simulation output", "", True)
+        lines = self.official_output()
+
+        return f"{title}\n\n{lines}"
+
     def render_metrics(self) -> str:
         """Build the closing report with the final figures.
 
@@ -193,10 +213,10 @@ class SimulationView(BaseView):
 
         Returns:
             str: the turns and the final figures when the view is
-            verbose, otherwise only the required output lines.
+            verbose, otherwise only the block required by the subject.
         """
         if not self.verbose:
-            return self.official_output()
+            return self.render_official()
 
         blocks: list[str] = [self.render_header()]
 
@@ -204,6 +224,7 @@ class SimulationView(BaseView):
             blocks.append(turn.render())
             blocks.append("")
 
+        blocks.append(self.render_official())
         blocks.append(self.render_metrics())
 
         return "\n".join(blocks)

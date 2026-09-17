@@ -19,7 +19,8 @@ The project is written in Python and uses Pydantic for data validation.
 * Several routes per map, with the fleet distributed across them.
 * Support for different zone types and capacities.
 * Drone movement simulation, every drone carrying its own route.
-* Coloured terminal output showing the simulation.
+* Turn by turn output in the format required by the subject,
+  every zone written in the colour the map file gives it.
 
 ## Instructions
 
@@ -214,20 +215,23 @@ The scheduler checks the project rules before allowing a drone to move, includin
 
 The simulation continues until all drones reach the end hub or the simulation detects that no further movement is possible.
 
-## Visual Representation
+## Simulation Output
 
-The program provides a coloured terminal representation of the simulation.
+The program prints the output required by section VII.5 of the subject
+and nothing else.
 
-The output shows:
+Each turn is one line, listing the movements of that turn space
+separated. A movement is written `D<ID>-<zone>`, or `D<ID>-<connection>`
+while a drone is still flying towards a restricted zone, the connection
+keeping the name it is declared with in the map file. A drone that does
+not move is left out of its line, and a drone that reaches the end zone
+is delivered and never printed again.
 
-* The current turn.
-* Drone movements.
-* Drone positions.
-* Zone occupancy.
-* Waiting drones.
-* Simulation results.
-
-Colours make different zones and drone movements easier to distinguish while keeping the simulation output readable.
+Every zone name is written in the colour its `color` metadata asks for,
+a connection keeping the colour of each of the two zones it links. The
+colours are ANSI escapes, dropped on their own as soon as the output is
+not a terminal, so a redirected run stays exactly the plain text the
+subject asks for.
 
 ## Example
 
@@ -268,27 +272,12 @@ uv run main.py maps/easy/02_simple_fork.txt
 ### Expected output
 
 ```text
-2 path(s) used out of 2 found
-  path 1: start -> junction -> path_a -> goal
-           3 turns, 2 drone(s)
-  path 2: start -> junction -> path_b -> goal
-           3 turns, 2 drone(s)
+  Simulation output
 
-  Turn 1
-    output: D1-junction D2-junction
-
-  Turn 2
-    output: D1-path_a D2-path_b D3-junction D4-junction
-
-  Turn 3
-    output: D1-goal D2-goal D3-path_a D4-path_b
-
-  Turn 4
-    output: D3-goal D4-goal
-
-  Result
-    all 4 drone(s) delivered
-    total turns          4
+D1-junction D2-junction
+D1-path_a D2-path_b D3-junction D4-junction
+D1-goal D2-goal D3-path_a D4-path_b
+D3-goal D4-goal
 ```
 
 The two branches of the fork are used at the same time, so the four

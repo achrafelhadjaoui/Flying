@@ -35,9 +35,12 @@ class ZoneController(Zone):
     def connect_connection(self, data: dict[str, Any]) -> None:
         """Connect the zone with the connections it appears in.
 
-        Every neighbour is stored as [neighbour name, link capacity]
-        directly inside the parsed data, so the pathfinding and the
-        simulation can walk the graph without searching again.
+        Every neighbour is stored as [neighbour name, link capacity,
+        connection name] directly inside the parsed data, so the
+        pathfinding and the simulation can walk the graph without
+        searching again. The connection name is the one written in the
+        map file, which the simulation has to print as it stands when
+        a drone flies towards a restricted zone.
 
         Args:
             data (dict[str, Any]): the parsed content of the map file.
@@ -59,6 +62,7 @@ class ZoneController(Zone):
                 1,
             )
             data_list.append(link_capacity)
+            data_list.append("-".join(connection["description"]))
 
             neighbors_data.append(data_list)
 

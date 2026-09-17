@@ -405,14 +405,3 @@ class FlightPlan:
             return
 
         self.select(pool)
-
-    def used_paths(self) -> list[int]:
-        """Return the routes at least one drone flies over.
-
-        Returns:
-            list[int]: the indexes of the routes really used.
-        """
-        return [
-            index for index in range(len(self.paths))
-            if self.loads[index] > 0
-        ]

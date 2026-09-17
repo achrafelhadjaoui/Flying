@@ -116,41 +116,15 @@ class FlyIn:
             print(
                 "no route found between the start and the end zone"
             )
-            return plan
-
-        self.show_plan(plan)
 
         return plan
-
-    def show_plan(self, plan: FlightPlan) -> None:
-        """Tell which route each part of the fleet was given.
-
-        Args:
-            plan (FlightPlan): the plan of the flight.
-        """
-        used = plan.used_paths()
-
-        print(f"{len(used)} path(s) used out of {len(plan.paths)} found")
-
-        for number, index in enumerate(used, start=1):
-            route = " -> ".join(plan.paths[index])
-
-            cost = plan.path_cost(plan.paths[index])
-
-            print(
-                f"  path {number}: {route}\n"
-                f"           {cost} turns, "
-                f"{plan.loads[index]} drone(s)"
-            )
-
-        print()
 
     def fly(
         self,
         data: dict[str, Any],
         routes: dict[str, list[str]],
     ) -> None:
-        """Run the drone simulation and display every turn.
+        """Run the drone simulation and print the turn lines.
 
         Args:
             data (dict[str, Any]): parsed map data.
@@ -159,7 +133,7 @@ class FlyIn:
         """
         nb_drones = data["nb_drones"]
         simulation = Simulation(data["zones"], routes, nb_drones)
-        view = SimulationView(data["zones"], nb_drones)
+        view = SimulationView(data["zones"], nb_drones, verbose=False)
 
         for moves, occupancy in simulation.run():
             view.add_turn(moves, occupancy)

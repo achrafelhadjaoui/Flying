@@ -81,20 +81,6 @@ class Move:
         """
         return cls(drone, zone, zone, cls.WAIT)
 
-    def token(self) -> str:
-        """Return the piece written on the official turn line.
-
-        A drone that does not move is left out of the line, so it has
-        no token at all.
-
-        Returns:
-            str: "D<ID>-<target>", or an empty string when waiting.
-        """
-        if self.kind == self.WAIT:
-            return ""
-
-        return f"{self.drone}-{self.target}"
-
 
 class TurnView(BaseView):
     """Tell what every drone did during a single turn.
@@ -132,18 +118,54 @@ class TurnView(BaseView):
             str(zone["name"]): zone for zone in self.zones
         }
 
+    def paint_zones(self, target: str) -> str:
+        """Write a zone or a connection with the colour of its zones.
+
+        A zone name never holds a dash, so a connection is simply the
+        two zones it links written around one. Both of them therefore
+        keep the colour asked for in the map file, and the dash
+        between them stays plain.
+
+        Args:
+            target (str): the zone name, or the connection name.
+
+        Returns:
+            str: the name, every zone painted with its own colour.
+        """
+        return "-".join(
+            self.terminal.paint(name, self.zone_color(name))
+            for name in target.split("-")
+        )
+
+    def official_token(self, move: Move) -> str:
+        """Build one coloured piece of the official turn line.
+
+        Args:
+            move (Move): the action to write.
+
+        Returns:
+            str: "D<ID>-<zone>" or "D<ID>-<connection>", the zones
+            painted with their colour, empty when the drone waited.
+        """
+        if move.kind == Move.WAIT:
+            return ""
+
+        return f"{move.drone}-{self.paint_zones(move.target)}"
+
     def official_line(self) -> str:
         """Build the line required by the subject.
 
         Every movement of the turn is listed, space separated, and the
-        drones that did not move are left out.
+        drones that did not move are left out. Each zone is written in
+        the colour the map file gave it, which the terminal drops on
+        its own when the output is not a terminal.
 
         Returns:
             str: the turn line, empty when nothing moved.
         """
-        tokens = [move.token() for move in self.moves if move.token()]
+        tokens = [self.official_token(move) for move in self.moves]
 
-        return " ".join(tokens)
+        return " ".join(token for token in tokens if token)
 
     def zone_type(self, name: str) -> str:
         """Return the type of a zone.
@@ -270,8 +292,9 @@ class TurnView(BaseView):
         """Build the whole description of the turn.
 
         Returns:
-            str: the heading, one line per drone, and the official
-            line required by the subject.
+            str: the heading and one line per drone. The line required
+            by the subject is not repeated here, the whole simulation
+            prints it in one single block.
         """
         moved, waiting, delivered = self.counters()
 
@@ -306,12 +329,5 @@ class TurnView(BaseView):
             lines.append(
                 "    " + self.terminal.paint("waiting: ", "grey") + names
             )
-
-        line = self.official_line()
-        lines.append("")
-        lines.append(
-            "    " + self.terminal.paint("output: ", "grey") +
-            self.terminal.paint(line if line else "(nothing moved)", "cyan")
-        )
 
         return "\n".join(lines)
