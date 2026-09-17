@@ -69,9 +69,6 @@ class FlightPlan:
         # drone -> the zone names it has to fly over
         self.routes: dict[str, list[str]] = {}
 
-        # how many turns the plan needs, as played by the simulation
-        self.turns: int = 0
-
     def read_number(self, value: Any, fallback: int = 1) -> int:
         """Read a capacity written either as a text or as a number.
 
@@ -391,8 +388,6 @@ class FlightPlan:
             # that route brings nothing, the fleet stays as it was
             self.paths = kept
             self.spread_drones()
-
-        self.turns = best
 
     def build(self) -> None:
         """Find the routes and share the fleet between them."""

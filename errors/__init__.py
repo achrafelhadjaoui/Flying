@@ -11,9 +11,6 @@ from .parser_errors import (
     InvalidFirstLineError,
     InvalidFormatError,
     InvalidValueError,
-    MissingValueError,
-    InvalidZoneError,
-    InvalidConnectionError,
 )
 
 __all__ = [
@@ -21,12 +18,9 @@ __all__ = [
     "FileError",
     "FileNotFound",
     "FileNotReadable",
-    "InvalidConnectionError",
     "InvalidFirstLineError",
     "InvalidFormatError",
     "InvalidValueError",
-    "InvalidZoneError",
-    "MissingValueError",
     "OsFileError",
     "ParserError",
 ]

@@ -1,5 +1,4 @@
 import os
-import shutil
 import sys
 
 
@@ -58,7 +57,6 @@ class Terminal:
             enabled = self.detect_support()
 
         self.enabled: bool = enabled
-        self.width: int = shutil.get_terminal_size((80, 24)).columns
 
     def detect_support(self) -> bool:
         """Tell whether colours can be written on the output.
@@ -127,26 +125,3 @@ class Terminal:
             return text
 
         return f"\033[{';'.join(codes)}m{text}{self.RESET}"
-
-    def visible_length(self, text: str) -> int:
-        """Return the length of a text once the escapes are removed.
-
-        Args:
-            text (str): the text to measure.
-
-        Returns:
-            int: the number of columns the text really takes.
-        """
-        length = 0
-        inside_escape = False
-
-        for letter in text:
-            if letter == "\033":
-                inside_escape = True
-            elif inside_escape:
-                if letter == "m":
-                    inside_escape = False
-            else:
-                length += 1
-
-        return length

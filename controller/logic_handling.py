@@ -43,7 +43,6 @@ class ShortPath:
         self.came_from: dict[str, str] = {}
         # zone name -> best real cost g(n) known so far
         self.best_cost: dict[str, int] = {}
-        self.total_cost: int = 0
         self.span = self.max_connection_span()
 
     def max_connection_span(self) -> int:
@@ -267,7 +266,6 @@ class ShortPath:
             self.is_found.add(current_name)
 
             if current_name == self.end["name"]:
-                self.total_cost = current_node[2]
                 self.rebuild_path()
                 return
 

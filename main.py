@@ -22,7 +22,6 @@ class FlyIn:
             file_path (str): path to the map file.
         """
         self.file_path = file_path
-        self.file: Parser | None = None
 
     def read_map(self) -> Parser:
         """Read and validate the whole map file.
@@ -37,7 +36,6 @@ class FlyIn:
         file.connection_check()
         DataValidator(file.data).validate()
 
-        self.file = file
         return file
 
     def build_zones(self, data: dict[str, Any]) -> None:
